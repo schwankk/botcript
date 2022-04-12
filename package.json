@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.26.1",
-    "imersao-bot-cripto-api": "git+https://github.com/luiztools/imersao-bot-cripto-api.git"
+    "imersao-bot-cripto-api": "git+https://github.com/luiztools/imersao-bot-cripto-api.git",
+    "telegraf": "^4.7.0"
   }
 }

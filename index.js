@@ -2,6 +2,9 @@ const axios  = require("axios");
 const api    = require("imersao-bot-cripto-api"); 
 const symbol = "BTCBUSD";
 
+const { Telegraf } = require('telegraf');
+const bot = new Telegraf("5269108603:AAHVkWBWkp63DYq8BOrDaeff8VvLRI8QpRs"); //BotTelegram
+
 let comprou    = false;
 let vtransacao = 100;
 let saldo      = 100;
@@ -18,6 +21,8 @@ let vcontadorbaixa  = 0;
 let vcontadoralta   = 0;
 let vmaxima = 0;
 let vminima = 0;
+let iniciar  = false;
+let fbitcoin = false;
 
 const credentials = {
     apiKey: "iXOwLZ5pznEpAXgSJnqrLJUpTbobhexFtEPImonpUrYYJEKOeKo1U0hwxU7PtAEk",
@@ -60,107 +65,163 @@ function pegaMaximaMinimas(vfechamentos){
     return 0;
 }
 
-async function consulta(){        
-    const response      = await axios.get(`http://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m`);
-    const vfechamentos  = response.data.map(vela => parseFloat(vela[4])); //Valor de fechamento da vela
+async function consulta(){  
+    if(fbitcoin){
+        //fbitcoin = false;
+        //const response      = await axios.get(`http://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m`);
+        //const vfechamentos  = response.data.map(vela => parseFloat(vela[4])); //Valor de fechamento da vela
 
-    const vrsi = calculaRSI(vfechamentos,14);
+    }  
+    if(iniciar){
+        const response      = await axios.get(`http://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m`);
+        const vfechamentos  = response.data.map(vela => parseFloat(vela[4])); //Valor de fechamento da vela
 
-    const maxim = pegaMaximaMinimas(vfechamentos);
+        const vrsi = calculaRSI(vfechamentos,14);
 
-    if(vanterior > vfechamentos[499]){
-        vvariacao = " - ";
-        vanterior = vfechamentos[499];
-    }
-    else if(vanterior < vfechamentos[499]){
-        vvariacao = " + "
-        vanterior = vfechamentos[499];
-    }
-    else{
-        vvariacao = " = " 
-    }
-    
-    if(vrsi > 75){ //VENDENDO
-        vcontadorbaixa = 0;
-        vcontadoralta++;        
-        if(comprou & (vfechamentos[499] > vcompra) & (vcontadoralta >= 3)){
-            vvendas   = vvendas + 1; //incrementa quantidade de vendas
-            vvenda    = vfechamentos[499]; //armazena valor da ultima venda            
-            comprou   = false; //marca que pode comprar novamente
-            let qtd   = vcarteira;
-            //const rvenda = await api.sell(credentials,symbol,qtd.toPrecision(3));
-            //console.log(rvenda);
-            vcarteira =  vcarteira - qtd;
-            saldo = saldo + (qtd * vvenda);            
-        }    
+        const maxim = pegaMaximaMinimas(vfechamentos);
+
+        if(vanterior > vfechamentos[499]){
+            vvariacao = " - ";
+            vanterior = vfechamentos[499];
+        }
+        else if(vanterior < vfechamentos[499]){
+            vvariacao = " + "
+            vanterior = vfechamentos[499];
+        }
+        else{
+            vvariacao = " = " 
+        }
+        
+        if(vrsi > 75){ //VENDENDO
+            vcontadorbaixa = 0;
+            vcontadoralta++;        
+            if(comprou & (vfechamentos[499] > vcompra) & (vcontadoralta >= 3)){
+                vvendas   = vvendas + 1; //incrementa quantidade de vendas
+                vvenda    = vfechamentos[499]; //armazena valor da ultima venda            
+                comprou   = false; //marca que pode comprar novamente
+                let qtd   = vcarteira;
+                //const rvenda = await api.sell(credentials,symbol,qtd.toPrecision(3));
+                //console.log(rvenda);
+                vcarteira =  vcarteira - qtd;
+                saldo = saldo + (qtd * vvenda); 
                 
-        vindicacao = "Indicação: Transação de Venda";
-    }
-    else if(vrsi < 20) { //COMPRANDO
-        vcontadoralta = 0;
-        vcontadorbaixa++;        
-        if(!comprou & vcontadorbaixa >= 3){
-            vcompras  = vcompras + 1; //incrementa quantidade de compras
-            vcompra   = vfechamentos[499]; //armazena valor da ultima compra
-            comprou   = true; //marca que comprou   
-            vqtdcompra = vtransacao/vcompra; 
-            //const rcompra = await api.buy(credentials,symbol,vqtdcompra.toPrecision(3));
-            //console.log(rcompra);
-            vcarteira += saldo/vcompra;
-            saldo     = saldo - vtransacao;            
-        }    
+                bot.telegram.sendMessage("1682120570","Trade de Venda: " + vqtd + " BTC no valor U$" + vvenda);
+            }    
+                    
+            vindicacao = "Indicação: Transação de Venda";
+        }
+        else if(vrsi < 20) { //COMPRANDO
+            vcontadoralta = 0;
+            vcontadorbaixa++;        
+            if(!comprou & vcontadorbaixa >= 3){
+                vcompras  = vcompras + 1; //incrementa quantidade de compras
+                vcompra   = vfechamentos[499]; //armazena valor da ultima compra
+                comprou   = true; //marca que comprou   
+                vqtdcompra = vtransacao/vcompra; 
+                //const rcompra = await api.buy(credentials,symbol,vqtdcompra.toPrecision(3));
+                //console.log(rcompra);
+                vcarteira += saldo/vcompra;
+                saldo     = saldo - vtransacao;  
+                
+                bot.telegram.sendMessage("1682120570","Trade de Compra: " + vqtdcompra + " BTC no valor U$" + vcompra);
+            }    
 
-        vindicacao = "Indicação: Transação de Compra"        
-    }
-    else{
-        vindicacao = "Indicação: Aguardar ";  
-        vcontadoralta  = 0;
-        vcontadorbaixa = 0;              
-    }
+            vindicacao = "Indicação: Transação de Compra"        
+        }
+        else{
+            vindicacao = "Indicação: Aguardar ";  
+            vcontadoralta  = 0;
+            vcontadorbaixa = 0;              
+        }
 
-    console.clear();
-    console.log("");
-    console.log(" Operadora: BINANCE - Bot Desenvolvido por: André R. Schwanke");
-    console.log(" ..............................................................");
-    console.log("");
-    console.log(" Analisando Criptomoeda: " + symbol );        
-    console.log("");
-    console.log(" Fechamento atual:.... U$" + vfechamentos[499] + "  (" + vvariacao + ") ");
-    console.log(" RSI atual:........... " + vrsi);
-    console.log("");
-    console.log(" Fechamento máximo 500 candles:......... " + vmaxima);
-    console.log(" Fechamento mínimo 500 candles:......... " + vminima);
-    console.log(" ..............................................................")
-    console.log("");
-    if(comprou == true){
-        console.log(" Monitorando para: Vender");    
-    }
-    else{
-        console.log(" Monitorando para: Comprar");    
-    }
-    console.log(" ..............................................................")
-    console.log(" " + vindicacao);   
-    if(vcontadoralta > 0){
-        console.log(" Se Mantendo em Alta: " + vcontadoralta);    
-    }
-    else if(vcontadorbaixa > 0){
-        console.log(" Se Mantendo em Baixa: " + vcontadorbaixa);    
-    }
-    console.log(" ..............................................................")     
-    console.log("");
-    console.log(" --------------------------------------------------------------");
-    console.log("");
-    console.log(" Saldo BOT:............... U$" + saldo);
-    console.log(" Carteira atual:.......... " + vcarteira + " BTC");
-    console.log(" Ultima Compra:........... " + vcompra);
-    console.log(" Ultima Venda:............ " + vvenda);
-    console.log(" Total de compras:........ " + vcompras);
-    console.log(" Total de vendas:......... " + vvendas);
-    console.log("");
-    console.log(" --------------------------------------------------------------");
+        console.clear();
+        console.log("");
+        console.log(" Operadora: BINANCE - Bot Desenvolvido por: André R. Schwanke");
+        console.log(" ..............................................................");
+        console.log("");
+        console.log(" Analisando Criptomoeda: " + symbol );        
+        console.log("");
+        console.log(" Fechamento atual:.... U$" + vfechamentos[499] + "  (" + vvariacao + ") ");
+        console.log(" RSI atual:........... " + vrsi);
+        console.log("");
+        console.log(" Fechamento máximo 500 candles:......... " + vmaxima);
+        console.log(" Fechamento mínimo 500 candles:......... " + vminima);
+        console.log(" ..............................................................")
+        console.log("");
+        if(comprou == true){
+            console.log(" Monitorando para: Vender");    
+        }
+        else{
+            console.log(" Monitorando para: Comprar");    
+        }
+        console.log(" ..............................................................")
+        console.log(" " + vindicacao);   
+        if(vcontadoralta > 0){
+            console.log(" Se Mantendo em Alta: " + vcontadoralta);    
+        }
+        else if(vcontadorbaixa > 0){
+            console.log(" Se Mantendo em Baixa: " + vcontadorbaixa);    
+        }
+        console.log(" ..............................................................")     
+        console.log("");
+        console.log(" --------------------------------------------------------------");
+        console.log("");
+        console.log(" Saldo BOT:............... U$" + saldo);
+        console.log(" Carteira atual:.......... " + vcarteira + " BTC");
+        console.log(" Ultima Compra:........... " + vcompra);
+        console.log(" Ultima Venda:............ " + vvenda);
+        console.log(" Total de compras:........ " + vcompras);
+        console.log(" Total de vendas:......... " + vvendas);
+        console.log("");
+        console.log(" --------------------------------------------------------------");
 
-    var vdata = new Date();
-    console.log( " Atualizado em: " + vdata);
+        var vdata = new Date();
+        console.log( " Atualizado em: " + vdata);
+    }           
 }
+       
+    bot.hears('Oi', (ctx) => {
+        ctx.reply('\nVocê iniciou uma conversa com o Bot de Criptomoedas do André.'
+        +'\n\nOlá meu mestre! '        
+        +'\n\nOpções Disponíveis:'
+        +'\n1 - Iniciar Bot de Monitoramento/Trade Bitcoin'        
+        +'\n2 - Iniciar Bot de Monitoramento/Trade Ethereum'        
+        +'\n3 - Fechamento Atual Bitcoin'        
+        +'\n4 - Fechamento Atual Ethereum');         
+    });
+    bot.hears('1', (ctx) => {
+        iniciar = true;
+        ctx.reply('Bot inicializado! ');
+        ctx.reply('Você será avisado aqui quando houver Trades de compras ou vendas de acordo com sua estratégia definida no Bot. ');             
+    });
+    bot.hears('3', (ctx) => {
+        //fbitcoin = true;
+        a = fechamentoBitcoin();
+            //console.log(a);
+            ctx.reply('1 Bitcoin U$ ' + a);
+        //});
 
-setInterval(consulta, 30000);
+        
+        
+    });
+    bot.hears('Parar', (ctx) => {
+        iniciar = false;
+        console.clear();
+        ctx.reply('Bot finalizado! ');            
+    });
+    //bot.telegram.sendMessage("1682120570","Teste");
+    bot.launch();
+
+    async function fechamentoBitcoin(){        
+        try{
+            const response = await axios.get(`http://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m`);
+            const v1  = response.data.map(vela => parseFloat(vela[4])); //Valor de fechamento da vela   
+            return toString(v1[499]); 
+            //console.log(v1[499]);        
+        }        
+        catch(e){
+            return e;
+        }
+    }
+
+setInterval(consulta, 1000);
