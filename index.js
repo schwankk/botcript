@@ -21,6 +21,8 @@ let vcontadorbaixa  = 0;
 let vcontadoralta   = 0;
 let vmaxima = 0;
 let vminima = 0;
+let vvelamaxima = 0;
+let vvelaminima = 0;
 let iniciar  = false;
 let fbitcoin = false;
 
@@ -49,16 +51,24 @@ function calculaRSI(vfechamentos, vqtd){
 }
 
 function pegaMaximaMinimas(vfechamentos){
+    vminima = 0;
+    vmaxima = 0;
+    vvelaminima = 0;
+    vvelamaxima = 0;
+    
     for(i=0; i < vfechamentos.length; i++){
         if(vminima == 0){
             vminima = vfechamentos[i];
+            vvelaminima = i;
         }
         else if(vminima > vfechamentos[i]){
             vminima = vfechamentos[i];
+            vvelaminima = i;
         }
 
         if(vfechamentos[i]>vmaxima){
             vmaxima = vfechamentos[i]
+            vvelamaxima = i;
         }       
     }
 
@@ -66,12 +76,6 @@ function pegaMaximaMinimas(vfechamentos){
 }
 
 async function consulta(){  
-    if(fbitcoin){
-        //fbitcoin = false;
-        //const response      = await axios.get(`http://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m`);
-        //const vfechamentos  = response.data.map(vela => parseFloat(vela[4])); //Valor de fechamento da vela
-
-    }  
     if(iniciar){
         const response      = await axios.get(`http://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m`);
         const vfechamentos  = response.data.map(vela => parseFloat(vela[4])); //Valor de fechamento da vela
@@ -144,8 +148,8 @@ async function consulta(){
         console.log(" Fechamento atual:.... U$" + vfechamentos[499] + "  (" + vvariacao + ") ");
         console.log(" RSI atual:........... " + vrsi);
         console.log("");
-        console.log(" Fechamento máximo 500 candles:......... " + vmaxima);
-        console.log(" Fechamento mínimo 500 candles:......... " + vminima);
+        console.log(" Fechamento máximo 500 candles:......... " + vmaxima + " Na vela: " + vvelamaxima);
+        console.log(" Fechamento mínimo 500 candles:......... " + vminima + " Na vela: " + vvelaminima);
         console.log(" ..............................................................")
         console.log("");
         if(comprou == true){
@@ -180,48 +184,51 @@ async function consulta(){
     }           
 }
        
-    bot.hears('Oi', (ctx) => {
-        ctx.reply('\nVocê iniciou uma conversa com o Bot de Criptomoedas do André.'
-        +'\n\nOlá meu mestre! '        
-        +'\n\nOpções Disponíveis:'
-        +'\n1 - Iniciar Bot de Monitoramento/Trade Bitcoin'        
-        +'\n2 - Iniciar Bot de Monitoramento/Trade Ethereum'        
-        +'\n3 - Fechamento Atual Bitcoin'        
-        +'\n4 - Fechamento Atual Ethereum');         
-    });
-    bot.hears('1', (ctx) => {
-        iniciar = true;
-        ctx.reply('Bot inicializado! ');
-        ctx.reply('Você será avisado aqui quando houver Trades de compras ou vendas de acordo com sua estratégia definida no Bot. ');             
-    });
-    bot.hears('3', (ctx) => {
-        //fbitcoin = true;
-        a = fechamentoBitcoin();
-            //console.log(a);
-            ctx.reply('1 Bitcoin U$ ' + a);
-        //});
+    function botTelegram(){
+        bot.hears('Oi', (ctx) => {
+            ctx.reply('\nVocê iniciou uma conversa com o Bot de Criptomoedas do André.'
+            +'\n\nOlá meu mestre! '        
+            +'\n\nOpções Disponíveis:'
+            +'\n1 - Iniciar Bot de Monitoramento/Trade Bitcoin'        
+            +'\n2 - Iniciar Bot de Monitoramento/Trade Ethereum'        
+            +'\n3 - Fechamento Atual Bitcoin'        
+            +'\n4 - Fechamento Atual Ethereum');         
+        });
+        bot.hears('1', (ctx) => {
+            iniciar = true;
+            ctx.reply('Bot inicializado! ');
+            ctx.reply('Você será avisado aqui quando houver Trades de compras ou vendas de acordo com sua estratégia definida no Bot. ');             
+        });
+        bot.hears('3', (ctx) => {
+            a = 0;
 
-        
-        
-    });
-    bot.hears('Parar', (ctx) => {
-        iniciar = false;
-        console.clear();
-        ctx.reply('Bot finalizado! ');            
-    });
-    //bot.telegram.sendMessage("1682120570","Teste");
-    bot.launch();
-
-    async function fechamentoBitcoin(){        
-        try{
-            const response = await axios.get(`http://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m`);
-            const v1  = response.data.map(vela => parseFloat(vela[4])); //Valor de fechamento da vela   
-            return toString(v1[499]); 
-            //console.log(v1[499]);        
-        }        
-        catch(e){
-            return e;
-        }
+            ctx.reply('1 Bitcoin U$ ' + a);            
+            
+        });
+        bot.hears('Parar', (ctx) => {
+            iniciar = false;
+            console.clear();
+            ctx.reply('Bot finalizado! ');            
+        });
+        //bot.telegram.sendMessage("1682120570","Teste");
+        bot.launch();
     }
 
-setInterval(consulta, 1000);
+    async function fechamentoBitcoin(){
+        
+        //try{
+        //    console.log("aqui2");
+        //    const response = axios.get(`http://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1m`);
+        //    const v1  = response.data.map(vela => parseFloat(vela[4])); //Valor de fechamento da vela               
+        //    v2 = v1;
+        //    return v2;
+        //}        
+        //catch(e){
+        //    console.log("aqui3");
+        //    v2 = 000000;                
+        //    return v2;
+        //}        
+    }
+
+    botTelegram();
+    setInterval(consulta, 30000);
